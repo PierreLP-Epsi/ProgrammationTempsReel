@@ -3,18 +3,34 @@
 #include <iostream>
 #include <string>
 #include <cstdlib>
+#include <thread>
+#include <vector>
 
 using namespace std;
 
-void send_message(ClientSocket client, string user){
+void send_message(ClientSocket client){
 	string message;
-	string reply;
 	
-	while(true){
-		getline(cin, message);
-		client << user + " : " + message;
-		client >> reply;
-		cout << reply << endl;
+	try {
+		while(true){
+			cout << "Send like: 'USER your_new_username' or 'MSG new_message' "
+			getline(cin, message);
+			client >> message;
+		}	
+	} catch ( SocketException& e ) {
+		cout << "Exception was caught:" << e.description() << endl;
+	}
+}
+
+void receive_message(ClientSocket client) {
+	string message;
+	try {
+		while (true) {
+			client >> message;
+			cout << "We received this response from the server:\n\"" << message << "\"\n";
+		}
+	} catch ( SocketException& e ) {
+		cout << "Exception was caught:" << e.description() << endl;
 	}
 }
 
@@ -27,25 +43,17 @@ int main (int argc, char* argv[]) {
   string host = argv[1];
   int port = atoi(argv[2]);
 
+  std::vector<thread> v(thread::hardware_concurrency());
+
   try {
-    ClientSocket client_socket ( host, port );
-    string reply;
-	string user;
+  	cout << "Hello, to begin, enter your name please: ";
+  	getline(cin, name);
+  	ClientSocket client(host, port);
+  	client << name;
 
-	try {
-		client_socket << "Coucou";
-		client_socket >> reply;
-	} catch ( SocketException& ) {}
-	
-    cout << "We received this response from the server:\n\"" << reply << "\"\n";;
-	
-	cout << "Entrer votre pseudo : ";
-	cin >> user;
-	cout << "Votre pseudo est : " << user << endl;
-
-	send_message(client_socket, user);
-  }  
-  
+  	//Init Threads (Listen & Speak)
+  	thread t1 = thread(receive_message, ref(client));
+  	thread t2 = thread(send_message, ref(client));
   catch ( SocketException& e ) {
     cout << "Exception was caught:" << e.description() << endl;
   }
